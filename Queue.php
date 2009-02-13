@@ -55,7 +55,7 @@ class QueueItem {
 	}
 
 	public function getPriority() {
-		return $this->obj;
+		return $this->priority;
 	}
 	
 	public function setPriority($priority) {
@@ -86,6 +86,14 @@ abstract class QueueStorage {
 	abstract public function open();
 	abstract public function close();
 
+	protected function getNewQueue() {
+		$queue = array(
+			QUEUE_PRIORITY_HIGH   => array(),
+			QUEUE_PRIORITY_MEDIUM => array(),
+			QUEUE_PRIORITY_LOW    => array(),
+		);
+	}
+
 //	public function push($obj, $priority=NULL);
 //	public function pop();
 	
@@ -99,7 +107,9 @@ abstract class QueueStorage {
 	public function add($obj) {
 		$this->refresh();
 		$priority = $obj->getPriority();
-		if (!empty($this->queue[$priority])) {
+		//echo "Priority: $priority\n";
+		if (empty($this->queue[$priority])) {
+			//echo "Creating a new $priority queue\n";
 			$this->queue[$priority] = array();
 		}
 		$this->queue[$priority][] = $obj;
@@ -110,10 +120,14 @@ abstract class QueueStorage {
 		// TODO: replace with a check whether there are
 		// any items waiting to be done.
 		if ($this->isQueueEmpty()) {
+			//echo "Queue is empty\n";
 			return false;
 		} elseif ($this->hasInactive()) {
+			//echo "Queue has inactive elements\n";
 			return true;
 		}
+		//echo "Queue fall through\n";
+		// TODO: see if any of the queue items are stale.
 		return false;
 	}
 
@@ -133,11 +147,17 @@ abstract class QueueStorage {
 	}
 
 	protected function isQueueEmpty() {
-		return empty($this->queue) || (
+		print_r($this->queue);
+		return (
 			empty($this->queue[QUEUE_PRIORITY_HIGH]) &&
 			empty($this->queue[QUEUE_PRIORITY_MEDIUM]) &&
 			empty($this->queue[QUEUE_PRIORITY_LOW])
 		);
+	}
+	
+	protected function hasInactive() {
+		// TODO see if there is one inactive element
+		return true;
 	}
 	
 }

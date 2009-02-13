@@ -6,23 +6,62 @@ define('QUEUE_PRIORITY_LOW', 		2);
 
 class QueueItem {
 	protected $obj;
-	protected $completed = false;
 	
-	function getItem() {
+	protected $created;
+	protected $started;
+	protected $active;
+	protected $completed;
+	protected $priority;
+	
+	public function __construct($object, $priority=QUEUE_PRIORITY_MEDIUM) {
+		$this->obj       = $obj;
+		$this->priority  = $priority;
+		$this->created   = time();
+		$this->started   = 0;
+		$this->active    = false;
+		$this->completed = false;
+	}
+	
+	public function getItem() {
 		return $this->obj;
 	}
 	
-	function setItem($item) {
-		$this->item = $item;
+	public function getCreated() {
+		return $this->created;
 	}
 	
-	function isComplete() {
+	public function getStarted() {
+		return $this->startTime;
+	}
+	
+	public function activate() {
+		$this->started = time();
+		$this->active  = true;
+	}
+	
+	public function isActive() {
+		return $this->active;
+	}
+	
+	public function isComplete() {
 		return $this->completed;
 	}
 	
-	function setComplete($complete) {
+	public function setComplete($complete) {
 		$this->completed = $complete;
+		if ($this->completed) {
+			$this->active = false;
+		}
 	}
+
+	public function getPriority() {
+		return $this->obj;
+	}
+	
+	public function setPriority($priority) {
+		$this->priority = $priority;
+	}
+
 }
 
 interface Queueable {
@@ -54,13 +93,15 @@ abstract class QueueStorage {
 //	public function push($obj, $priority=NULL);
 //	public function pop();
 	
-//	public function hasNext();
-//	public function next();
-
+	// Save the last batch of changes to the storage
 	abstract protected function persist();
+	
+	// Check that we have the most up-to-date queue data
+	abstract protected function refresh();
 
 
 	public function add($obj, $priority) {
+		$this->refresh();
 		if (!empty($this->queue[$priority])) {
 			$this->queue[$priority] = array();
 		}
@@ -68,13 +109,19 @@ abstract class QueueStorage {
 		$this->persist();
 	}
 
-	public function hasUpdates() {
-		// TODO: keep track of whether the queues have been updated	
-		return true;
+	public function hasNext() {
+		// TODO: replace with a check whether there are
+		// any items waiting to be done.
+		return !$this->isQueueEmpty();
 	}
 
-	public function hasNext() {
-		return !$this->isQueueEmpty();
+	public function next() {
+	
+	}
+
+	protected function hasUpdates() {
+		// TODO: keep track if we have non-persisted updates		
+		return false;
 	}
 
 	protected function isQueueEmpty() {
@@ -84,10 +131,9 @@ abstract class QueueStorage {
 			empty($this->queue[QUEUE_PRIORITY_LOW])
 		);
 	}
-
-
 	
 }
+
 
 class SerialisedQueueStorage extends QueueStorage {
 	protected $serFile = '/home/user/data/queue/queue.ser';
@@ -117,6 +163,10 @@ class SerialisedQueueStorage extends QueueStorage {
 	
 	protected function persist() {
 		echo "SerialisedQueueStorate->persist()\n";
+	}
+	
+	protected function refresh() {
+		echo "SerialisedQueueStorate->refresh()\n";
 	}
 
 }
@@ -156,7 +206,7 @@ class Queue {
 	* Returns the first object on the queue (at the head)
 	**/
 	public function next() {
-		
+		return $this->storage->next();		
 	}
 
 	public function hasNext() {

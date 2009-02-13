@@ -1,8 +1,8 @@
 <?php
 
-define('QUEUE_PRIORITY_HIGH', 	0);
-define('QUEUE_PRIORITY_MEDIUM',	1);
-define('QUEUE_PRIORITY_LOW', 		2);
+define('QUEUE_PRIORITY_HIGH', 	1);
+define('QUEUE_PRIORITY_MEDIUM',	2);
+define('QUEUE_PRIORITY_LOW', 		4);
 
 class QueueItem {
 	protected $obj;
@@ -13,7 +13,7 @@ class QueueItem {
 	protected $completed;
 	protected $priority;
 	
-	public function __construct($object, $priority=QUEUE_PRIORITY_MEDIUM) {
+	public function __construct($obj, $priority=QUEUE_PRIORITY_MEDIUM) {
 		$this->obj       = $obj;
 		$this->priority  = $priority;
 		$this->created   = time();
@@ -100,8 +100,9 @@ abstract class QueueStorage {
 	abstract protected function refresh();
 
 
-	public function add($obj, $priority) {
+	public function add($obj) {
 		$this->refresh();
+		$priority = $obj->getPriority();
 		if (!empty($this->queue[$priority])) {
 			$this->queue[$priority] = array();
 		}
@@ -121,7 +122,7 @@ abstract class QueueStorage {
 
 	protected function hasUpdates() {
 		// TODO: keep track if we have non-persisted updates		
-		return false;
+		return true; //false;
 	}
 
 	protected function isQueueEmpty() {
@@ -199,7 +200,9 @@ class Queue {
 		if ($priority===false) {
 			$priority = QUEUE_PRIORITY_MEDIUM;
 		}
-		$this->storage->add($obj, $priority);
+		
+		$item = new QueueItem($obj, $priority);
+		$this->storage->add($item);
 	}
 	
 	/**

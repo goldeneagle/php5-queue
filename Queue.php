@@ -109,11 +109,22 @@ abstract class QueueStorage {
 	public function hasNext() {
 		// TODO: replace with a check whether there are
 		// any items waiting to be done.
-		return !$this->isQueueEmpty();
+		if ($this->isQueueEmpty()) {
+			return false;
+		} elseif ($this->hasInactive()) {
+			return true;
+		}
+		return false;
 	}
 
 	public function next() {
-	
+		// Iterate through each queue
+		// * Get the first inactive element
+		// * If no inactive elements
+		//   * Iterate through started elements
+		//   * Check that the start time is still fresh
+		//   * If the start time is stale, return that one
+		//  * Move on to the next queue
 	}
 
 	protected function hasUpdates() {

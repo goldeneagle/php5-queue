@@ -31,6 +31,7 @@ interface Queueable {
 
 abstract class QueueStorage {
 	protected $config;
+	protected $queue;
 
 	public function __construct($config=false) {
 		if ($config !== false) {
@@ -56,12 +57,40 @@ abstract class QueueStorage {
 //	public function hasNext();
 //	public function next();
 
+	abstract protected function persist();
+
+
+	public function add($obj, $priority) {
+		if (!empty($this->queue[$priority])) {
+			$this->queue[$priority] = array();
+		}
+		$this->queue[$priority][] = $obj;
+		$this->persist();
+	}
+
+	public function hasUpdates() {
+		// TODO: keep track of whether the queues have been updated	
+		return true;
+	}
+
+	public function hasNext() {
+		return !$this->isQueueEmpty();
+	}
+
+	protected function isQueueEmpty() {
+		return empty($this->queue) || (
+			empty($this->queue[QUEUE_PRIORITY_HIGH]) &&
+			empty($this->queue[QUEUE_PRIORITY_MEDIUM]) &&
+			empty($this->queue[QUEUE_PRIORITY_LOW])
+		);
+	}
+
+
 	
 }
 
 class SerialisedQueueStorage extends QueueStorage {
 	protected $serFile = '/home/user/data/queue/queue.ser';
-	protected $queue;
 
 	public function open() {
 		if (file_exists($this->serFile)) {
@@ -85,19 +114,17 @@ class SerialisedQueueStorage extends QueueStorage {
 		}
 	}
 	
-	public function hasUpdates() {
-		// TODO: keep track of whether the queues have been updated	
-		return true;
+	
+	protected function persist() {
+		echo "SerialisedQueueStorate->persist()\n";
 	}
 
-	
 }
 
 class Queue {
 	protected $name;
 	protected $storage;
 
-	protected $queue;
 	
 	public function __construct($config=false) {
 		if ($config!==false) {
@@ -120,27 +147,20 @@ class Queue {
 	**/
 	public function add($obj, $priority=false) {
 		if ($priority===false) {
-			
+			$priority = QUEUE_PRIORITY_MEDIUM;
 		}
+		$this->storage->add($obj, $priority);
 	}
 	
 	/**
 	* Returns the first object on the queue (at the head)
 	**/
 	public function next() {
-
+		
 	}
 
 	public function hasNext() {
-		return !$this->isQueueEmpty();
-	}
-	
-	protected function isQueueEmpty() {
-		return empty($this->queue) || (
-			empty($this->queue->high) &&
-			empty($this->queue->medium) &&
-			empty($this->queue->low)
-		);
+		return $this->storage->hasNext();
 	}
 	
 	protected function setStorage($storage) {

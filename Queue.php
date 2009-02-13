@@ -102,6 +102,9 @@ abstract class QueueStorage {
 	
 	// Check that we have the most up-to-date queue data
 	abstract protected function refresh();
+	
+	//abstract protected function lock();
+	//abstract protected function unlock();
 
 
 	public function add($obj) {

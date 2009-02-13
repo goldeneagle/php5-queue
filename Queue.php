@@ -64,10 +64,6 @@ class QueueItem {
 
 }
 
-interface Queueable {
-	public function getGuid();
-}
-
 abstract class QueueStorage {
 	protected $config;
 	protected $queue;

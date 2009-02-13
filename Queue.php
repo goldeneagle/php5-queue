@@ -105,7 +105,7 @@ abstract class QueueStorage {
 
 
 	public function add($obj) {
-		$this->refresh();
+		$this->refresh(); // Rename this to 'getLock'
 		$priority = $obj->getPriority();
 		//echo "Priority: $priority\n";
 		if (empty($this->queue[$priority])) {
@@ -113,7 +113,7 @@ abstract class QueueStorage {
 			$this->queue[$priority] = array();
 		}
 		$this->queue[$priority][] = $obj;
-		$this->persist();
+		$this->persist(); // rename this to 'unlock'
 	}
 
 	public function hasNext() {
@@ -165,10 +165,12 @@ abstract class QueueStorage {
 
 class SerialisedQueueStorage extends QueueStorage {
 	protected $serFile = '/home/user/data/queue/queue.ser';
+	protected $lastUpdated;
 
 	public function open() {
 		if (file_exists($this->serFile)) {
 			$ser = file_get_contents($this->serFile);
+			$this->lastUpdated = filectime($this->serFile);
 			$obj = unserialize($ser);
 			
 			// TODO: Do some tighter checking here
@@ -190,11 +192,23 @@ class SerialisedQueueStorage extends QueueStorage {
 	
 	
 	protected function persist() {
-		echo "SerialisedQueueStorate->persist()\n";
+		echo "SerialisedQueueStorage->persist()\n";
+		
+		// Write the queue to file
+		
+		// Unlock the file
 	}
 	
 	protected function refresh() {
-		echo "SerialisedQueueStorate->refresh()\n";
+		//echo "SerialisedQueueStorage->refresh()\n";
+		$fileTouched = filectime($this->serFile);
+		
+		// TODO: get a lock on the file
+		if ($fileTouched > $this->lastUpdated) {
+			// TODO: reload file
+			echo "Reloading the queue from storage\n";
+			$this->open();
+		}
 	}
 
 }

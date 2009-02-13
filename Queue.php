@@ -147,7 +147,7 @@ abstract class QueueStorage {
 	}
 
 	protected function isQueueEmpty() {
-		print_r($this->queue);
+		//print_r($this->queue);
 		return (
 			empty($this->queue[QUEUE_PRIORITY_HIGH]) &&
 			empty($this->queue[QUEUE_PRIORITY_MEDIUM]) &&

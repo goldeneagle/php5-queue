@@ -72,17 +72,27 @@ abstract class QueueStorage {
 		if ($config !== false) {
 			$this->setConfig($config);
 		}
-		$this->open();
+		if ($this->lock()) {
+			$this->open();
+			$this->unlock();
+		}
 	}
+
 	
 	public function __destruct() {
-		$this->close();
+		if ($this->lock()) {
+			$this->close();
+			$this->unlock();
+		}
 	}
+	
 	
 	public function setConfig($config) {
 		$this->config = $config;
+		$this->init();
 	}
 	
+	abstract protected function init();
 	abstract public function open();
 	abstract public function close();
 
@@ -103,22 +113,34 @@ abstract class QueueStorage {
 	// Check that we have the most up-to-date queue data
 	abstract protected function refresh();
 	
-	//abstract protected function lock();
-	//abstract protected function unlock();
+	// Get a lock on updates to the queue
+	abstract protected function lock();
+	
+	// Unlock the queue for other processes
+	abstract protected function unlock($force = false);
 
+	// Check whether there is a lock present
+	abstract protected function isLock();
 
 	public function add($obj) {
-		$this->refresh(); // Rename this to 'getLock'
 		$priority = $obj->getPriority();
 		//echo "Priority: $priority\n";
-		if (empty($this->queue[$priority])) {
-			//echo "Creating a new $priority queue\n";
-			$this->queue[$priority] = array();
-		}
-		$this->queue[$priority][] = $obj;
-		$this->persist(); // rename this to 'unlock'
-	}
 
+		if ($this->lock()) { // Lock the queue while updating
+			$this->refresh(); // Make sure we have the freshest queue data
+
+			if (empty($this->queue[$priority])) {
+				//echo "Creating a new $priority queue\n";
+				$this->queue[$priority] = array();
+			}
+			$this->queue[$priority][] = $obj;
+
+			$this->persist(); // persist the queue to storagee
+			$this->unlock(); // Unlock the queue for others
+		}
+	}
+	
+	
 	public function hasNext() {
 		// TODO: replace with a check whether there are
 		// any items waiting to be done.
@@ -167,8 +189,22 @@ abstract class QueueStorage {
 
 
 class SerialisedQueueStorage extends QueueStorage {
-	protected $serFile = '/home/user/data/queue/queue.ser';
+	protected $serFile    = '/home/user/data/queue/queue.ser';
+	protected $lockFile;
+	protected $lockTime   = 0;
+	protected $staleLimit = 10;
+	
 	protected $lastUpdated;
+
+	protected function init() {
+		// At this point we have a config object.
+		// TODO: use config object to set the $serFile
+		
+		if (!empty($this->serFile)) {
+			// Create a lock file name
+			$this->lockFile = $this->serFile . '.LOCK';
+		}
+	}
 
 	public function open() {
 		if (file_exists($this->serFile)) {
@@ -213,6 +249,49 @@ class SerialisedQueueStorage extends QueueStorage {
 			$this->open();
 		}
 	}
+
+	protected function lock() {
+		// Check whether we have a lock
+		// And if we do, check its freshness
+		
+		// When we don't have a lock
+		// Create a lock file
+		if (file_put_contents($this->lockFile, time()) !== false) {
+			$this->lockTime = filectime($this->lockFile);
+			return true;
+		}
+		
+		return false;	
+	}
+	
+	protected function unlock($force = false) {
+		// Check that we created the lock file in the first place
+		$lockTime = filectime($this->lockFile);
+		if ($lockTime == $this->lockTime) {
+			return unlink($this->lockFile);
+		} elseif ($force) {
+			echo "WARN: Forcing an unlock of the queue\n";
+			return unlink($this->lockFile);
+		}
+		return false;
+	}
+	
+	protected function isLock() {
+		if (file_exists($this->lockFile)) {
+			// TODO: keep track of whether we've done this before
+			// Rather than rechecking the filectime
+			
+			// Check whether the lock is fresh
+			$staleTime = time() - filectime($this->lockFile);
+			if ($staleTime > $this->staleLimit) {
+				echo "WARN: File lock is stale. Forcing an unlocking\n";
+				return !$this->unlock(true);
+			}
+			return true;
+		}
+		return false;
+	}
+
 
 }
 

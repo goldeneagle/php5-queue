@@ -72,6 +72,7 @@ abstract class QueueStorage {
 		if ($config !== false) {
 			$this->setConfig($config);
 		}
+		$this->init();
 		if ($this->lock()) {
 			$this->open();
 			$this->unlock();
@@ -89,10 +90,9 @@ abstract class QueueStorage {
 	
 	public function setConfig($config) {
 		$this->config = $config;
-		$this->init();
 	}
 	
-	abstract protected function init();
+	abstract public function init();
 	abstract public function open();
 	abstract public function close();
 
@@ -137,6 +137,8 @@ abstract class QueueStorage {
 
 			$this->persist(); // persist the queue to storagee
 			$this->unlock(); // Unlock the queue for others
+		} else {
+			echo "WARN: Couldn't get a lock\n";
 		}
 	}
 	
@@ -196,7 +198,8 @@ class SerialisedQueueStorage extends QueueStorage {
 	
 	protected $lastUpdated;
 
-	protected function init() {
+	public function init() {
+		echo "SerialisedQueueStorage->init()\n";
 		// At this point we have a config object.
 		// TODO: use config object to set the $serFile
 		
@@ -259,6 +262,8 @@ class SerialisedQueueStorage extends QueueStorage {
 		if (file_put_contents($this->lockFile, time()) !== false) {
 			$this->lockTime = filectime($this->lockFile);
 			return true;
+		} else {
+			echo "WARN: file_put_contents failed: {$this->lockFile}\n";
 		}
 		
 		return false;	
@@ -346,9 +351,9 @@ class Queue {
 		}
 	}
 	
-	protected function initStorage($name) {
+	protected function initStorage($name, $config=false) {
 		if (class_exists($name)) {
-			$tmpStore = new $name();
+			$tmpStore = new $name($config);
 			if (is_a($tmpStore, 'QueueStorage')) {
 				return $tmpStore;
 			} else {

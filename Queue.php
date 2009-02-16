@@ -199,13 +199,14 @@ class SerialisedQueueStorage extends QueueStorage {
 	protected $lastUpdated;
 
 	public function init() {
-		echo "SerialisedQueueStorage->init()\n";
+		//echo "SerialisedQueueStorage->init()\n";
 		// At this point we have a config object.
 		// TODO: use config object to set the $serFile
 		
 		if (!empty($this->serFile)) {
 			// Create a lock file name
 			$this->lockFile = $this->serFile . '.LOCK';
+			//echo "INFO: Lock file: {$this->lockFile}\n";
 		}
 	}
 

@@ -72,7 +72,9 @@ abstract class QueueStorage {
 		if ($config !== false) {
 			$this->setConfig($config);
 		}
+
 		$this->init();
+
 		if ($this->lock()) {
 			$this->open();
 			$this->unlock();
@@ -118,6 +120,9 @@ abstract class QueueStorage {
 	
 	// Unlock the queue for other processes
 	abstract protected function unlock($force = false);
+	
+	// Wait for around until we get a lock
+	abstract protected function waitForLock($timeout = false);
 
 	// Check whether there is a lock present
 	abstract protected function isLock();
@@ -200,6 +205,7 @@ class SerialisedQueueStorage extends QueueStorage {
 
 	public function init() {
 		//echo "SerialisedQueueStorage->init()\n";
+		
 		// At this point we have a config object.
 		// TODO: use config object to set the $serFile
 		
@@ -280,6 +286,44 @@ class SerialisedQueueStorage extends QueueStorage {
 			return unlink($this->lockFile);
 		}
 		return false;
+	}
+
+	/**
+	 * Wait around then get a lock on the file
+	 **/	
+	protected function waitForLock($timeout = false) {
+		if ($timeout===false) {
+			$timeout = $this->staleLimit();
+		}
+		
+		$startTime   = time();
+		$haveLock    = false;
+		$haveTimeout = false;
+		
+		while(!$haveLock && !$haveTimeout) {
+			$isLocked = file_exists($this->lockFile);
+			if ($isLocked) {
+				$lockTime = filectime($this->lockFile);
+				$duration = time() - $lockTime;
+				if ($duration > $this->staleLimit) {
+					// Force an unlock if the lock is stale
+					echo "WARN: Forcing an unlock after a wait timeout\n";
+					$isLocked = !$this->unlock(true);
+				}
+			}
+
+			if ($isLocked) {
+				if ($duration > $timeout) {
+					// Updateing haveTimeout
+					$haveTimeout = true;
+				}
+			} else {
+				// Updating haveLock			
+				$haveLock = $this->lock();
+			}
+		}
+		
+		return $haveLock;
 	}
 	
 	protected function isLock() {

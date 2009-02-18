@@ -99,11 +99,7 @@ abstract class QueueStorage {
 	abstract public function close();
 
 	protected function getNewQueue() {
-		$queue = array(
-			QUEUE_PRIORITY_HIGH   => array(),
-			QUEUE_PRIORITY_MEDIUM => array(),
-			QUEUE_PRIORITY_LOW    => array(),
-		);
+		$queue = array();
 	}
 
 //	public function push($obj, $priority=NULL);
@@ -128,17 +124,10 @@ abstract class QueueStorage {
 	abstract protected function isLock();
 
 	public function add($obj) {
-		$priority = $obj->getPriority();
-		//echo "Priority: $priority\n";
-
 		if ($this->lock()) { // Lock the queue while updating
 			$this->refresh(); // Make sure we have the freshest queue data
 
-			if (empty($this->queue[$priority])) {
-				//echo "Creating a new $priority queue\n";
-				$this->queue[$priority] = array();
-			}
-			$this->queue[$priority][] = $obj;
+			$this->queue[] = $obj;
 
 			$this->persist(); // persist the queue to storagee
 			$this->unlock(); // Unlock the queue for others
@@ -170,7 +159,6 @@ abstract class QueueStorage {
 		//   * Iterate through started elements
 		//   * Check that the start time is still fresh
 		//   * If the start time is stale, return that one
-		//  * Move on to the next queue
 	}
 
 	protected function hasUpdates() {
@@ -249,14 +237,16 @@ class SerialisedQueueStorage extends QueueStorage {
 	}
 	
 	protected function refresh() {
-		//echo "SerialisedQueueStorage->refresh()\n";
-		$fileTouched = filectime($this->serFile);
-		
-		// TODO: get a lock on the file
-		if ($fileTouched > $this->lastUpdated) {
-			// TODO: reload file
-			echo "Reloading the queue from storage\n";
-			$this->open();
+		if (file_exists($this->serFile)) {
+			//echo "SerialisedQueueStorage->refresh()\n";
+			$fileTouched = filectime($this->serFile);
+			
+			// TODO: get a lock on the file
+			if ($fileTouched > $this->lastUpdated) {
+				// TODO: reload file
+				echo "Reloading the queue from storage\n";
+				$this->open();
+			}
 		}
 	}
 

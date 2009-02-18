@@ -9,6 +9,8 @@ if ($queue->hasNext()) {
 	echo "INFO: Queue has items\n";
 } else {
 	$queue->add('http://www.example.com');
+	$queue->add('http://www.example.net');
+	$queue->add('http://www.example.org');
 }
 
 while($item = $queue->next()) {

@@ -262,17 +262,36 @@ class SerialisedQueueStorage extends QueueStorage {
 
 	protected function lock() {
 		// Check whether we have a lock
-		// And if we do, check its freshness
-		
-		// When we don't have a lock
-		// Create a lock file
-		if (file_put_contents($this->lockFile, time()) !== false) {
-			$this->lockTime = filectime($this->lockFile);
-			return true;
-		} else {
-			echo "WARN: file_put_contents failed: {$this->lockFile}\n";
+		$lockExists = file_exists($this->lockFile);
+
+		if ($lockExists) {
+			// And if we do, check its freshness
+			$lockTime = filectime($this->lockFile);
+			$duration = time() - $lockTime;
+
+			if ($duration > $this->staleLimit) {
+				// Force an unlock if the lock is stale
+				echo "WARN: Forcing an unlock of a stale lock\n";
+				$isUnlocked = $this->unlock(true);
+
+				if ($isUnlocked) {
+					$lockExists = false;
+				} else {
+					echo "ERROR: Can't force an unlock of stale lock\n";
+				}
+			}
 		}
 		
+		// When we don't have a lock
+		if (!$lockExists) {
+			// Create a lock file
+			if (file_put_contents($this->lockFile, time()) !== false) {
+				$this->lockTime = filectime($this->lockFile);
+				return true;
+			} else {
+				echo "WARN: Creating lock failed: {$this->lockFile}\n";
+			}
+		}		
 		return false;	
 	}
 	
@@ -283,7 +302,11 @@ class SerialisedQueueStorage extends QueueStorage {
 			return unlink($this->lockFile);
 		} elseif ($force) {
 			echo "WARN: Forcing an unlock of the queue\n";
-			return unlink($this->lockFile);
+			$isUnlocked = unlink($this->lockFile);
+			if ($isUnlocked) {
+				$this->lockTime = 0;
+			}
+			return $isUnlocked;
 		}
 		return false;
 	}
@@ -293,7 +316,7 @@ class SerialisedQueueStorage extends QueueStorage {
 	 **/	
 	protected function waitForLock($timeout = false) {
 		if ($timeout===false) {
-			$timeout = $this->staleLimit();
+			$timeout = $this->staleLimit;
 		}
 		
 		$startTime   = time();
@@ -309,12 +332,18 @@ class SerialisedQueueStorage extends QueueStorage {
 					// Force an unlock if the lock is stale
 					echo "WARN: Forcing an unlock after a wait timeout\n";
 					$isLocked = !$this->unlock(true);
+					if ($isLocked) {
+						echo "ERROR: Couldn't unlock the queue\n";
+						//break;
+					}
 				}
 			}
 
 			if ($isLocked) {
-				if ($duration > $timeout) {
-					// Updateing haveTimeout
+				// See if we haven't waited long enough yet
+				$waited = time() - $startTime;
+				if ($waited > $timeout) {
+					echo "WARN: Waited for $timeout and still haven't got a lock\n";
 					$haveTimeout = true;
 				}
 			} else {

@@ -75,7 +75,7 @@ abstract class QueueStorage {
 
 		$this->init();
 
-		if ($this->lock()) {
+		if ($this->waitForLock()) {
 			$this->open();
 			$this->unlock();
 		}
@@ -83,7 +83,7 @@ abstract class QueueStorage {
 
 	
 	public function __destruct() {
-		if ($this->lock()) {
+		if ($this->waitForLock()) {
 			$this->close();
 			$this->unlock();
 		}
@@ -349,6 +349,11 @@ class SerialisedQueueStorage extends QueueStorage {
 			} else {
 				// Updating haveLock			
 				$haveLock = $this->lock();
+				if (!$haveLock) {
+					echo "INFO: We didn't get a lock\n";
+					// wait before retrying
+					sleep(1); echo '.';
+				}
 			}
 		}
 		

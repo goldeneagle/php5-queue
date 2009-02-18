@@ -138,47 +138,22 @@ abstract class QueueStorage {
 	
 	
 	public function hasNext() {
-		// TODO: replace with a check whether there are
-		// any items waiting to be done.
-		if ($this->isQueueEmpty()) {
-			//echo "Queue is empty\n";
-			return false;
-		} elseif ($this->hasInactive()) {
-			//echo "Queue has inactive elements\n";
-			return true;
-		}
-		//echo "Queue fall through\n";
-		// TODO: see if any of the queue items are stale.
-		return false;
+		return !$this->isQueueEmpty();
 	}
 
 	public function next() {
-		// Iterate through each queue
-		// * Get the first inactive element
-		// * If no inactive elements
-		//   * Iterate through started elements
-		//   * Check that the start time is still fresh
-		//   * If the start time is stale, return that one
+		return array_shift($this->queue);
 	}
 
 	protected function hasUpdates() {
 		// TODO: keep track if we have non-persisted updates		
-		return true; //false;
+		//return true; //false;
 	}
 
 	protected function isQueueEmpty() {
-		//print_r($this->queue);
-		return (
-			empty($this->queue[QUEUE_PRIORITY_HIGH]) &&
-			empty($this->queue[QUEUE_PRIORITY_MEDIUM]) &&
-			empty($this->queue[QUEUE_PRIORITY_LOW])
-		);
+		return empty($this->queue);
 	}
 	
-	protected function hasInactive() {
-		// TODO see if there is one inactive element
-		return true;
-	}
 	
 }
 
@@ -231,9 +206,8 @@ class SerialisedQueueStorage extends QueueStorage {
 	protected function persist() {
 		echo "SerialisedQueueStorage->persist()\n";
 		
-		// Write the queue to file
-		
-		// Unlock the file
+			$ser = serialize($this->queue);
+			file_put_contents($this->serFile, $ser);
 	}
 	
 	protected function refresh() {

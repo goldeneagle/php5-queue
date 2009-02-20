@@ -2,7 +2,9 @@
 
 require_once 'Queue.php';
 
-$queue = new Queue('SerialisedQueueStorage');
+$queue = new Queue(
+	'SerialisedQueueStorage', '/home/user/data/queue/exampleQueue.ser'
+);
 //print_r($queue);
 
 if ($queue->hasNext()) {

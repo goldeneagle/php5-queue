@@ -72,13 +72,6 @@ abstract class QueueStorage {
 		if ($config !== false) {
 			$this->setConfig($config);
 		}
-
-		$this->init();
-
-		if ($this->waitForLock()) {
-			$this->open();
-			$this->unlock();
-		}
 	}
 
 	
@@ -92,6 +85,13 @@ abstract class QueueStorage {
 	
 	public function setConfig($config) {
 		$this->config = $config;
+
+		$this->init();
+
+		if ($this->waitForLock()) {
+			$this->open();
+			$this->unlock();
+		}
 	}
 	
 	abstract public function init();
@@ -180,9 +180,18 @@ class SerialisedQueueStorage extends QueueStorage {
 		//echo "SerialisedQueueStorage->init()\n";
 		
 		// At this point we have a config object.
-		// TODO: use config object to set the $serFile
+		if ($this->config) {
+			if (is_string($this->config)) {
+				$this->serFile = $this->config;
+			} elseif (is_array($this->config)) {
+				$this->serFile = $this->config['file'];
+			} elseif (is_object($this->config)) {
+				$this->serFile = $this->config->file;
+			}
+		}
 		
 		if (!empty($this->serFile)) {
+			echo "INFO: Queue file: {$this->serFile}\n";
 			// Create a lock file name
 			$this->lockFile = $this->serFile . '.LOCK';
 			//echo "INFO: Lock file: {$this->lockFile}\n";
@@ -358,18 +367,19 @@ class SerialisedQueueStorage extends QueueStorage {
 class Queue {
 	protected $name;
 	protected $storage;
+	protected $config;
 
 	
-	public function __construct($config=false) {
+	public function __construct($storage, $config=false) {
+		$this->setStorage($storage);
 		if ($config!==false) {
 			$this->setConfig($config);
 		}
 	}	
 	
 	public function setConfig($config) {
-		if (is_string($config)) {
-			$this->setStorage($config);
-		}	
+		$this->config = $config;
+		$this->storage->setConfig($config);
 	}	
 	
 	public function getStorage() {

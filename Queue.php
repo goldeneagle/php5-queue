@@ -22,7 +22,7 @@ class QueueItem {
 		$this->completed = false;
 	}
 	
-	public function getItem() {
+	public function getObject() {
 		return $this->obj;
 	}
 	

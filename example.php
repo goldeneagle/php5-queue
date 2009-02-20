@@ -3,7 +3,7 @@
 require_once 'Queue.php';
 
 $queue = new Queue('SerialisedQueueStorage');
-print_r($queue);
+//print_r($queue);
 
 if ($queue->hasNext()) {
 	echo "INFO: Queue has items\n";
@@ -14,7 +14,8 @@ if ($queue->hasNext()) {
 }
 
 while($item = $queue->next()) {
-	echo "Item:"; print_r($item);
+	$object = $item->getObject();
+	echo "Item: $object\n";
 }
 
 ?>

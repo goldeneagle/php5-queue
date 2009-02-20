@@ -138,11 +138,21 @@ abstract class QueueStorage {
 	
 	
 	public function hasNext() {
+		$this->refresh();
 		return !$this->isQueueEmpty();
 	}
 
 	public function next() {
-		return array_shift($this->queue);
+		$item = NULL;
+		if ($this->lock()) {
+			$this->refresh();
+
+			$item = array_shift($this->queue);
+
+			$this->persist();
+			$this->unlock();
+		}
+		return $item;
 	}
 
 	protected function hasUpdates() {
@@ -204,11 +214,13 @@ class SerialisedQueueStorage extends QueueStorage {
 	
 	
 	protected function persist() {
-		echo "SerialisedQueueStorage->persist()\n";
-		
-			$ser = serialize($this->queue);
-			file_put_contents($this->serFile, $ser);
+		//echo "SerialisedQueueStorage->persist()\n";
+		$ser = serialize($this->queue);
+		file_put_contents($this->serFile, $ser);
+		$this->lastUpdated = time(); //filectime($this->serFile);
+		//echo "LastUpdated: {$this->lastUpdated} (", time(), ")\n";
 	}
+
 	
 	protected function refresh() {
 		if (file_exists($this->serFile)) {
@@ -218,7 +230,7 @@ class SerialisedQueueStorage extends QueueStorage {
 			// TODO: get a lock on the file
 			if ($fileTouched > $this->lastUpdated) {
 				// TODO: reload file
-				echo "Reloading the queue from storage\n";
+				echo "Reloading the queue from storage {$fileTouched}:{$this->lastUpdated}\n";
 				$this->open();
 			}
 		}

@@ -2,3 +2,7 @@
 # Ignore temp editing files
 *~
 
+# Ignore config.php
+config.php
+
+

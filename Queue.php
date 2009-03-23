@@ -184,7 +184,12 @@ class SerialisedQueueStorage extends QueueStorage {
 			if (is_string($this->config)) {
 				$this->serFile = $this->config;
 			} elseif (is_array($this->config)) {
-				$this->serFile = $this->config['file'];
+				if (!empty($this->config['file'])) {
+					$this->serFile = $this->config['file'];
+				} else {
+					$this->serFile = $this->config['datapath'] .
+						$this->config['name'] . '.ser';
+				}
 			} elseif (is_object($this->config)) {
 				$this->serFile = $this->config->file;
 			}
@@ -369,13 +374,20 @@ class Queue {
 	protected $storage;
 	protected $config;
 
-	
+/****	
 	public function __construct($storage, $config=false) {
 		$this->setStorage($storage);
 		if ($config!==false) {
 			$this->setConfig($config);
 		}
-	}	
+	}
+****/
+
+	public function __construct($config) {
+		$this->setStorage($config['type']);
+		$this->setConfig($config);
+	}
+
 	
 	public function setConfig($config) {
 		$this->config = $config;

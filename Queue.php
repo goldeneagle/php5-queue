@@ -214,7 +214,7 @@ class SerialisedQueueStorage extends QueueStorage {
 				$this->queue = $obj;
 			}
 		} else {
-			echo "DEBUG: No queue file $this->serFile found\n";
+			//echo "DEBUG: No queue file $this->serFile found\n";
 			// TODO: Initialise a new queue here
 		}
 	}

@@ -5,7 +5,7 @@ class BatchProcessor {
 	protected $config;
 	protected $isInitialised = false;
 	
-	protected $queues;	
+	protected $jobQueue;	
 	
 	public function __construct($config=false) {
 		if ($config) {
@@ -16,69 +16,75 @@ class BatchProcessor {
 	public function setConfig($config) {
 		$this->config = $config;
 		if (!$this->isInitialised) {
-			$this->init();
+			$this->createJobQueue();
 		}
+		$this->init();
 	}
 
+
+
+	###
+	### Protected methods
+	###
 
 	protected function init() {
+		// Initialise job queues with existing persistent queues
 		if (!empty($this->config['queues'])) {
-			$this->initQueues($this->config['queues']);	
+			$this->initJobQueues($this->config['queues']);	
 		}
 	}
 	
-	protected function initQueues($queues) {
-		$this->queues = array();
+	protected function initJobQueues($queues) {
 		foreach($queues as $queueConfig) {
-			$queue = new Queue($queueConfig);
-			$this->queues[$queueConfig['name']] = $queue;
+			$this->jobQueue->addQueue($queueConfig);
 		}
 	}
+	
+	protected function createJobQueue() {
+		$this->jobQueue = new JobQueue();
+	}
+
 }
 
-class BatchJob {
-	protected $appName;
-	protected $task;
-	protected $data;
-	protected $status;
-	protected $retried=0;
-	protected $created;
-	protected $started;
-	protected $completed;
+class JobQueue {
+	protected $queues;
+	protected $jobs;
+
+	protected $priorityOrder;
+	protected $defaultPriority = 50;
 	
-	public function __construct($name=false, $task=false, $data=false) {
-		if ($name) { $this->setName($name); }
-		if ($task) { $this->setTask($task); }
-		if ($data) { $this->setData($data); }
-		$this->created = time();
+	public function __construct() {
+		$priorityOrder = array();
+		$this->queues  = array();
+	}
+	
+	/**
+	* Add an existing persistent queue to our job queue.
+	* Queue added if the queue-name hasn't already been used
+	**/
+	public function addQueue($config) {
+		if (empty($this->queues[$config['name']])) {
+			$this->queues[$config['name']] = new Queue($config);
 		
-		// TODO: Create a unique job number
-		// Perhaps when it is added to a queue?
+			// Add to the priority Order
+			$priority = $this->defaultPriority;
+			if (!empty($config['priority'])) {
+				$priority = $config['priority'];
+			}
+			if (empty($this->priorityOrder[$priority])) {
+				$this->priorityOrder[$priority] = array();
+			}
+			$this->priorityOrder[$priority][] = $config['name'];
+		} else {
+			echo "WARN: queue {$config['name']} already exists\n";
+		}
 	}
-
-	public function getName() {
-		return $this->name;
-	}
-	public function setName($name) {
-		$this->name = $name;
-	}
-
-	public function getTask() {
-		return $this->task;
-	}
-	public function setTast($task) {
-		$this->task = $task;
-	}
-
-	public function getData() {
-		return $this->data;
-	}
-	public function setData($data) {
-		$this->data = $data;
-	}
-
-	public function markAsStarted() {}
-	public function markAsCompleted() {}
+	
+	public function isEmpty() {}
+	public function getNextJob() {}
+	public function peekNextJob() {}
+	
+	public function getNextAppJob($appname) {}
 }
 
 ?>

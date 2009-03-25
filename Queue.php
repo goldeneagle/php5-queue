@@ -74,7 +74,6 @@ abstract class QueueStorage {
 		}
 	}
 
-	
 	public function __destruct() {
 		if ($this->waitForLock()) {
 			$this->close();
@@ -97,6 +96,7 @@ abstract class QueueStorage {
 	abstract public function init();
 	abstract public function open();
 	abstract public function close();
+	abstract public function size();
 
 	protected function getNewQueue() {
 		$queue = array();
@@ -224,6 +224,10 @@ class SerialisedQueueStorage extends QueueStorage {
 			$ser = serialize($this->queue);
 			file_put_contents($this->serFile, $ser);
 		}
+	}
+	
+	public function size() {
+		return count($this->queue);
 	}
 	
 	
@@ -419,6 +423,10 @@ class Queue {
 
 	public function hasNext() {
 		return $this->storage->hasNext();
+	}
+	
+	public function size() {
+		return $this->storage->size();
 	}
 	
 	protected function setStorage($storage) {

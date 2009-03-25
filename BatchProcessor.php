@@ -20,6 +20,14 @@ class BatchProcessor {
 		}
 		$this->init();
 	}
+	
+	public function size() {
+		return $this->jobQueue->size();
+	}
+	
+	public function isEmpty() {
+		return $this->jobQueue->isEmpty();
+	}
 
 
 
@@ -80,7 +88,30 @@ class JobQueue {
 		}
 	}
 	
-	public function isEmpty() {}
+	/**
+	* Returns the number of Jobs queued and waiting
+	**/
+	public function size() {
+		$size = 0;
+		foreach($this->queues as $queue) {
+			//print_r($queue);
+			$size += $queue->size();
+		}
+		return $size;
+	}
+
+	/**
+	* Returns whether there are any more jobs to process
+	**/
+	public function isEmpty() {
+		foreach($this->queues as $queue) {
+			if ($queue->hasNext()) {
+				// break out on the first non-empty queue
+				return false;
+			}
+		}
+		return true;
+	}
 	public function getNextJob() {}
 	public function peekNextJob() {}
 	

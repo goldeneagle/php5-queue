@@ -11,8 +11,10 @@ require_once 'BatchJob.php';
 require_once 'config.php';
 
 $batch = new BatchProcessor($batchConfig);
+$size = $batch->size();
 
-
+echo "Batch has $size jobs\n";
+echo "Batch is ", ($batch->isEmpty()?'':'not '), "empty\n";
 
 
 

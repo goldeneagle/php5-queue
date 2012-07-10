@@ -1,9 +1,10 @@
 <?php
 
-require_once 'Library.php';
+require_once(dirname(__FILE__).'/../Queue.php');
 
 $queue = new Queue\Queue(
-	'SerialisedQueueStorage', dirname(__FILE__).'/test.ser'
+	array("type" => 'Queue\SerializedQueueStorage',
+        "file" => dirname(__FILE__).'/test.ser')
 );
 
 if ($queue->hasNext()) {

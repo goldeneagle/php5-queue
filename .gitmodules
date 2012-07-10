@@ -1,0 +1,3 @@
+[submodule "vendor/spork"]
+	path = vendor/spork
+	url = git://github.com/kriswallsmith/spork.git

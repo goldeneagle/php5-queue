@@ -1,5 +1,6 @@
 <?php
 
+namespace Queue;
 
 class BatchProcessor {
 	protected $config;

@@ -1,11 +1,10 @@
 <?php
 
-require_once 'Queue.php';
+require_once 'Library.php';
 
-$queue = new Queue(
-	'SerialisedQueueStorage', '/home/user/data/queue/exampleQueue.ser'
+$queue = new Queue\Queue(
+	'SerialisedQueueStorage', dirname(__FILE__).'/test.ser'
 );
-//print_r($queue);
 
 if ($queue->hasNext()) {
 	echo "INFO: Queue has items\n";

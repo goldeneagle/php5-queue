@@ -1,5 +1,7 @@
 <?php
 
+namespace Queue;
+
 define('BATCH_JOB_CREATED',    0);
 define('BATCH_JOB_QUEUED',     1);
 define('BATCH_JOB_ACTIVE',     2);

@@ -15,17 +15,22 @@ namespace Queue;
 class QueueLock {
   /**
    * @param QueueStorage $queue
+   * @param null|integer $timeout timeout in seconds
    * @throws QueueLockException
    */
-  public function __construct($queue) {
+  public function __construct($queue, $timeout = null) {
     $this->queue = $queue;
-    if (!$this->queue->lock()) {
+    $this->locked = false;
+    if (!$this->queue->waitForLock($timeout)) {
       throw new QueueLockException("Could not get a lock on queue");
     }
+    $this->locked = true;
   }
 
   public function __destruct() {
-    $this->queue->unlock();
+    if ($this->locked) {
+      $this->queue->unlock();
+    }
   }
 }
 ?>

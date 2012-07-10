@@ -18,12 +18,17 @@ class SerializedQueueStorage extends QueueStorage {
       if (is_string($this->config)) {
         $this->serFile = $this->config;
       } elseif (is_array($this->config)) {
+        if (isset($this->config['staleLimit'])) {
+          $this->staleLimit = $this->config['staleLimit'];
+        }
+
         if (!empty($this->config['file'])) {
           $this->serFile = $this->config['file'];
         } else {
           $this->serFile = $this->config['datapath'] .
                            $this->config['name'] . '.ser';
         }
+
       } elseif (is_object($this->config)) {
         $this->serFile = $this->config->file;
       }
@@ -141,9 +146,10 @@ class SerializedQueueStorage extends QueueStorage {
 
   /**
    * Wait around then get a lock on the file
+   * @param integer|null $timeout timeout in seconds
    **/
-  public function waitForLock($timeout = false) {
-    if ($timeout===false) {
+  public function waitForLock($timeout = null) {
+    if ($timeout === null) {
       $timeout = $this->staleLimit;
     }
 

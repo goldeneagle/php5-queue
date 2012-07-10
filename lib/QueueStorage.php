@@ -5,30 +5,45 @@ namespace Queue;
 abstract class QueueStorage {
   protected $config;
   protected $queue;
+  /**
+   * @var null|integer Timeout in seconds to use when acquiring a QueueLock
+   */
+  protected $timeout;
+  /**
+   * @var null|QueueLock QueueLock owned by parent, this lock is used instead of acquiring a new lock for operations
+   */
+  protected $lock;
 
-  public function __construct($config=false) {
+  public function __construct($config = false) {
     if ($config !== false) {
       $this->setConfig($config);
     }
   }
 
   public function __destruct() {
-    if ($this->waitForLock()) {
-      $this->close();
-      $this->unlock();
-    }
+    $lock = $this->getLock();
+    $this->close();
   }
 
 
   public function setConfig($config) {
     $this->config = $config;
+    if (isset($config['timeout'])) {
+      $this->timeout = $config['timeout'];
+    } else {
+      $this->timeout = null;
+    }
+
+    if (isset($config['lock'])) {
+      $this->lock = $config['lock'];
+    } else {
+      $this->lock = null;
+    }
 
     $this->init();
 
-    if ($this->waitForLock()) {
-      $this->open();
-      $this->unlock();
-    }
+    $lock = new QueueLock($this, $this->timeout);
+    $this->open();
   }
 
   abstract public function init();
@@ -66,15 +81,36 @@ abstract class QueueStorage {
   /**
    * Wait for around until we get a lock
    */
-  abstract public function waitForLock($timeout = false);
+  abstract public function waitForLock($timeout = null);
 
   /**
    * Check whether there is a lock present
    */
   abstract public function isLock();
 
-  public function add($obj) {
-    $lock = new QueueLock($this);
+  /**
+   * @param null|integer $timeout
+   * @param null|QueueLock $lock
+   * @return QueueLock
+   */
+  public function getLock($timeout = null, $lock = null) {
+    if ($timeout === null) {
+      $timeout = $this->timeout;
+    }
+    if ($this->lock === null) {
+      $lock = new QueueLock($this, $timeout);
+    } else {
+      $lock = $this->lock;
+    }
+    return $lock;
+  }
+
+  /**
+   * @param mixed $obj
+   * @param null|QueueLock $lock optional lock, if a lock for the queue has already been acquired
+   */
+  public function add($obj, $lock = null) {
+    $lock = $this->getLock($lock);
     $this->refresh(); // Make sure we have the freshest queue data
 
     $this->queue[] = $obj;
@@ -82,15 +118,26 @@ abstract class QueueStorage {
     $this->persist(); // persist the queue to storagee
   }
 
+  /**
+   * @param null|QueueLock $lock optional lock, if a lock for the queue has already been acquired
+   * @return bool
+   */
+  public function hasNext($lock = null) {
+    $lock = $this->getLock($lock);
 
-  public function hasNext() {
     $this->refresh();
     return !$this->isQueueEmpty();
   }
 
-  public function next() {
+  /**
+   * @return QueueItem|null
+   * @param null|QueueLock $lock optional lock, if a lock for the queue has already been acquired
+   * @throws QueueEmptyException
+   */
+  public function next($lock = null) {
     $item = NULL;
-    $lock = new QueueLock($this);
+    $lock = $this->getLock($lock);
+
     $this->refresh();
 
     if (count($this->queue) == 0) {
@@ -107,7 +154,12 @@ abstract class QueueStorage {
     //return true; //false;
   }
 
-  protected function isQueueEmpty() {
+  /**
+   * @param null|QueueLock $lock optional lock, if a lock for the queue has already been acquired
+   * @return bool
+   */
+  protected function isQueueEmpty($lock = null) {
+    $this->refresh();
     return empty($this->queue);
   }
 }

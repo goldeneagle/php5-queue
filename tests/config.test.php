@@ -2,7 +2,9 @@
 
 namespace Queue\Test;
 
-require_once(dirname(__FILE__)."/../Queue.php");
+require_once(dirname(__FILE__)."/../Autoloader.php");
+\Queue_Autoloader::register();
+\Queue_Autoloader::addModule("Spork", dirname(__FILE__)."/../vendor/spork/src/Spork");
 set_time_limit(200);
 
 define('QUEUE_TEMPORARY_DIR', dirname(__FILE__).'/tmp/');

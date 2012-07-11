@@ -49,37 +49,41 @@ class Queue {
 
   /**
    * Adds an object to the end of the queue
+   * @param null|QueueLock $lock
    * @param mixed $obj
    * @param int|boolean $priority
    **/
-  public function add($obj, $priority=false) {
+  public function add($obj, $priority=false, $lock = null) {
 		if ($priority===false) {
 			$priority = QUEUE_PRIORITY_MEDIUM;
 		}
 		
 		$item = new QueueItem($obj, $priority);
-		$this->storage->add($item);
+		$this->storage->add($item, $lock);
 	}
 	
 	/**
+   * @param null|QueueLock $lock
    * @return QueueItem first object on the queue (at the head)
    **/
-	public function next() {
-		return $this->storage->next();		
+	public function next($lock = null) {
+		return $this->storage->next($lock);
 	}
 
   /**
+   * @param null|QueueLock $lock
    * @return bool
    */
-  public function hasNext() {
-		return $this->storage->hasNext();
+  public function hasNext($lock = null) {
+		return $this->storage->hasNext($lock);
 	}
 
   /**
+   * @param null|QueueLock $lock
    * @return integer
    */
-  public function size() {
-		return $this->storage->size();
+  public function size($lock = null) {
+		return $this->storage->getSize($lock);
 	}
 	
 	protected function setStorage($storage) {

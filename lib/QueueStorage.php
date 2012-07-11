@@ -21,10 +21,15 @@ abstract class QueueStorage {
   }
 
   public function __destruct() {
-    $lock = $this->getLock();
+    /* can't create a lock here because we are shutting down */
+    if ($this->lock === null) {
+      $this->waitForLock($this->timeout);
+    }
     $this->close();
+    if ($this->lock === null) {
+      $this->unlock();
+    }
   }
-
 
   public function setConfig($config) {
     $this->config = $config;
@@ -46,10 +51,10 @@ abstract class QueueStorage {
     $this->open();
   }
 
-  abstract public function init();
-  abstract public function open();
-  abstract public function close();
-  abstract public function size();
+  abstract protected function init();
+  abstract protected function open();
+  abstract protected function close();
+  abstract protected function size();
 
   protected function getNewQueue() {
     $queue = array();
@@ -97,12 +102,20 @@ abstract class QueueStorage {
     if ($timeout === null) {
       $timeout = $this->timeout;
     }
-    if ($this->lock === null) {
-      $lock = new QueueLock($this, $timeout);
-    } else {
-      $lock = $this->lock;
+    if ($lock === null) {
+      if ($this->lock === null) {
+        $lock = new QueueLock($this, $timeout);
+      } else {
+        $lock = $this->lock;
+      }
     }
     return $lock;
+  }
+
+  public function getSize($lock = null) {
+    $lock = $this->getLock(null, $lock);
+    $this->refresh();
+    return $this->size();
   }
 
   /**
@@ -110,7 +123,7 @@ abstract class QueueStorage {
    * @param null|QueueLock $lock optional lock, if a lock for the queue has already been acquired
    */
   public function add($obj, $lock = null) {
-    $lock = $this->getLock($lock);
+    $lock = $this->getLock(null, $lock);
     $this->refresh(); // Make sure we have the freshest queue data
 
     $this->queue[] = $obj;
@@ -123,7 +136,7 @@ abstract class QueueStorage {
    * @return bool
    */
   public function hasNext($lock = null) {
-    $lock = $this->getLock($lock);
+    $lock = $this->getLock(null, $lock);
 
     $this->refresh();
     return !$this->isQueueEmpty();
@@ -136,7 +149,7 @@ abstract class QueueStorage {
    */
   public function next($lock = null) {
     $item = NULL;
-    $lock = $this->getLock($lock);
+    $lock = $this->getLock(null, $lock);
 
     $this->refresh();
 
